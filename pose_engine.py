@@ -25,6 +25,7 @@ import os
 import platform
 import sys
 import time
+import cv2
 
 
 #TODO: Adds support for window and MAC
@@ -154,3 +155,27 @@ class PoseEngine():
                     Point(x, y), keypoint_scores[i, j])
             poses.append(Pose(pose_keypoints, pose_score))
         return poses, self._inf_time
+
+    def DetectPosesInCVImage(self, img):
+        """Detects poses in a given OpenCV image.
+
+           For ideal results make sure the image fed to this function is
+           close to the expected input size - it is the caller's
+           responsibility to resize the image accordingly.
+
+        Args:
+          img: an opencv image
+        """
+        resized_image = cv2.resize(img,
+                                   (self._input_width, self._input_height),
+                                   cv2.INTER_NEAREST)
+        input_data = np.expand_dims(resized_image, axis=0)
+        if self._input_type is np.float32:
+            # Floating point versions of posenet take image data in
+            # [-1,1] range.
+            input_data = np.float32(resized_image) / 128.0 - 1.0
+        else:
+            # Assuming to be uint8
+            input_data = np.asarray(resized_image)
+        self.run_inference(input_data.flatten())
+        return self.ParseOutput()
